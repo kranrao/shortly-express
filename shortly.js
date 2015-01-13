@@ -2,7 +2,7 @@ var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
-var urlModule = require('url');
+var knex = require('knex');
 
 
 var db = require('./app/config');
@@ -23,10 +23,28 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
-
-app.get('/',
+// comment out while testing user login
+/*app.get('/',
 function(req, res) {
   res.render('index');
+});*/
+
+// send user to login page unless authenticated
+app.get('/',
+function(req, res){
+  res.render('login');
+});
+
+// login url leads to login page
+app.get('/login',
+function(req, res) {
+  res.render('login');
+});
+
+// signup url leads to signup page
+app.get('/signup',
+function(req, res) {
+  res.render('signup');
 });
 
 app.get('/create',
@@ -46,12 +64,41 @@ function(req, res) {
   });
 });
 
+// post for user login
+app.post('/login',
+function(req, res){
+  var username = req.body.username;
+  var password = req.body.password;
+
+  // test case - username: Kiran, password: Password123
+  new User({ username: username}).fetch().then(function(found){
+    if(found){ // if user exists
+      // is password correct? TODO: NEED TO HAVE HASH / SALT
+      console.log(found.attributes);
+      if (password === found.get('password')){
+        // authenticate users
+        console.log('authenticate!')
+      } else { // else
+        // error user
+        console.log('Not a valid password: ', password);
+        // TODO: UPDATE WITH ERROR ALERT
+        return res.render('login', {
+          error: 'Password is wrong'
+        })
+      }
+    } else { // error user - highlight, signup
+      console.log('Not a valid user');
+      // TODO: UPDATE WITH ERROR ALERT
+      return res.render('login', {
+        error: 'Username does not exist'
+    }
+
+  });
+});
+
 app.post('/links',
 function(req, res) {
   var uri = req.body.url;
-  if (uri.indexOf('www') === -1){
-    uri = req.protocol + '://www.' + uri.slice(7);
-  }
   if (!util.isValidUrl(uri)) {
     console.log('Not a valid url: ', uri);
     return res.send(404);
@@ -103,14 +150,12 @@ app.get('/*', function(req, res) {
       var click = new Click({
         link_id: link.get('id')
       });
-    console.log('OUR test before',link.get('url'));
       click.save().then(function() {
         db.knex('urls')
           .where('code', '=', link.get('code'))
           .update({
             visits: link.get('visits') + 1,
           }).then(function() {
-            console.log('OUR test after',link.get('url'));
             return res.redirect(link.get('url'));
           });
       });

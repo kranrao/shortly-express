@@ -3,7 +3,8 @@ var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
 var bcrypt = require('bcrypt-nodejs');
-
+var session = require('express-session');
+var cookieParser = require('cookie-parser'); // the session is stored in a cookie, so use this to parse it
 
 var db = require('./app/config');
 var Users = require('./app/collections/users');
@@ -14,6 +15,11 @@ var Click = require('./app/models/click');
 
 var app = express();
 
+// cookieParser before expressSession
+app.use(cookieParser());
+// cookie session
+app.use(session({secret:'temporary'}))
+
 app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
 app.use(partials());
@@ -23,45 +29,65 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
-// comment out while testing user login
-/*app.get('/',
-function(req, res) {
-  res.render('index');
-});*/
+// NOTE: NOTHING BELOW IS 'DRY' - REFACTOR LATER
 
 // send user to login page unless authenticated
 app.get('/',
 function(req, res){
-  res.render('login');
+  if(req.session.userName){
+    res.render('index');
+  } else {
+    res.render('login');
+  }
 });
 
 // login url leads to login page
 app.get('/login',
 function(req, res) {
-  res.render('login');
+  if(req.session.userName){
+    res.render('index');
+  } else {
+    res.render('login');
+  }
 });
 
 // signup url leads to signup page
 app.get('/signup',
-function(req, res) {
-  res.render('signup');
+function(req, res){
+  if(req.session.userName){
+    res.render('index');
+  } else {
+    res.render('signup');
+  }
 });
 
 app.get('/create',
 function(req, res) {
-  res.render('index');
+  if(req.session.userName){
+    res.render('index');
+  } else {
+    res.render('login');
+  }
 });
 
 app.get('/logout',
 function(req, res) {
-  res.render('login');
+  if(req.session.userName){
+    res.render('index');
+  } else {
+    res.render('login');
+  }
 });
 
 app.get('/links',
 function(req, res) {
-  Links.reset().fetch().then(function(links) {
-    res.send(200, links.models);
-  });
+  if(req.session.userName){
+    Links.reset().fetch().then(function(links) {
+      res.send(200, links.models);
+    });
+  } else {
+    res.render('login');
+  }
 });
 
 // post for user login
@@ -77,8 +103,9 @@ function(req, res){
       var hash = bcrypt.hashSync(password, salt);
       // is password correct?
       if (hash === found.get('password')){
-        // TODO: Authenticate User session so get's past login page
         console.log('authenticate!')
+        // Authenticate User session so get's past login page
+        req.session.userName = username;
         res.redirect('/');
       } else { // else
         // error user
@@ -123,7 +150,8 @@ function(req, res){
 
       user.save().then(function(newUser){
         Users.add(newUser);
-        // TODO: Authenticate User session so get's past login page
+        // Authenticate User session so get's past login page
+        req.session.userName = username;
         res.redirect('/');
       });
 

@@ -2,6 +2,7 @@ var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
+var urlModule = require('url');
 
 
 var db = require('./app/config');
@@ -23,24 +24,29 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
 
-app.get('/', 
+app.get('/',
 function(req, res) {
   res.render('index');
 });
 
-app.get('/create', 
+app.get('/create',
 function(req, res) {
   res.render('index');
 });
 
-app.get('/links', 
+app.get('/logout',
+function(req, res) {
+  res.render('login');
+});
+
+app.get('/links',
 function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.send(200, links.models);
   });
 });
 
-app.post('/links', 
+app.post('/links',
 function(req, res) {
   var uri = req.body.url;
 
@@ -87,25 +93,33 @@ function(req, res) {
 /************************************************************/
 
 app.get('/*', function(req, res) {
-  new Link({ code: req.params[0] }).fetch().then(function(link) {
-    if (!link) {
-      res.redirect('/');
-    } else {
-      var click = new Click({
-        link_id: link.get('id')
-      });
+  console.log(req.url);
+  if (req.headers.host.match(/^www/) !== null){
+    console.log("I'm in our !www handler")
+    res.redirect('http://' + req.headers.host.replace(/^www\./, '') + req.url);
+  } else {
+    console.log("I have www")
+    new Link({ code: req.params[0] }).fetch().then(function(link) {
+      if (!link) {
+        res.redirect('/');
+      } else {
+        var click = new Click({
+          link_id: link.get('id')
+        });
 
-      click.save().then(function() {
-        db.knex('urls')
-          .where('code', '=', link.get('code'))
-          .update({
-            visits: link.get('visits') + 1,
-          }).then(function() {
-            return res.redirect(link.get('url'));
-          });
-      });
-    }
-  });
+        click.save().then(function() {
+          db.knex('urls')
+            .where('code', '=', link.get('code'))
+            .update({
+              visits: link.get('visits') + 1,
+            }).then(function() {
+              return res.redirect(link.get('url'));
+            });
+        });
+      }
+    });
+  }
+
 });
 
 console.log('Shortly is listening on 4568');

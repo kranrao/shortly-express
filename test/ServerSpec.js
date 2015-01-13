@@ -136,12 +136,12 @@ describe('', function() {
       it('Fetches the link url title', function (done) {
         requestWithSession(options, function(error, res, body) {
           db.knex('urls')
-            .where('title', '=', 'Rofl Zoo - Daily funny animal pictures')
+            .where('title', '=', 'Funny animal pictures, funny animals, funniest dogs')
             .then(function(urls) {
               if (urls['0'] && urls['0']['title']) {
                 var foundTitle = urls['0']['title'];
               }
-              expect(foundTitle).to.equal('Rofl Zoo - Daily funny animal pictures');
+              expect(foundTitle).to.equal('Funny animal pictures, funny animals, funniest dogs');
               done();
             });
         });
@@ -189,6 +189,7 @@ describe('', function() {
         };
 
         requestWithSession(options, function(error, res, body) {
+          console.log(res.request.href);
           var currentLocation = res.request.href;
           expect(currentLocation).to.equal('http://www.roflzoo.com/');
           done();

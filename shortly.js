@@ -2,7 +2,7 @@ var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
-var knex = require('knex');
+var bcrypt = require('bcrypt-nodejs');
 
 
 var db = require('./app/config');
@@ -71,7 +71,7 @@ function(req, res){
   var password = req.body.password;
 
   // test case - username: Kiran, password: Password123
-  new User({ username: username}).fetch().then(function(found){
+  new User({username: username}).fetch().then(function(found){
     if(found){ // if user exists
       // is password correct? TODO: NEED TO HAVE HASH / SALT
       console.log(found.attributes);
@@ -84,15 +84,50 @@ function(req, res){
         // TODO: UPDATE WITH ERROR ALERT
         return res.render('login', {
           error: 'Password is wrong'
-        })
+        });
       }
     } else { // error user - highlight, signup
       console.log('Not a valid user');
       // TODO: UPDATE WITH ERROR ALERT
       return res.render('login', {
         error: 'Username does not exist'
+      });
     }
+  });
+});
 
+// create post for user signup - complete salt + hash as a part of this
+app.post('/signup',
+function(req, res){
+  var username = req.body.username;
+  var password = req.body.password;
+  // used sync... change to callback?
+  var salt = bcrypt.genSaltSync(10);
+  var hash = bcrypt.hashSync(password, salt);
+
+  // new user signup
+  new User({username: username}).fetch().then(function(found){
+    if(found){ // if user exists
+      console.log('User already exists')
+      // return to login page
+      return res.render('login', {
+        error: 'Username already exists'
+      });
+    } else { // else
+      // add user, new password, and salt to db
+      var user = new User({
+        username: username,
+        password: hash,
+        salt: salt
+      });
+
+      user.save().then(function(newUser){
+        Users.add(newUser);
+        // TODO: Authenticate User session so get's past login page
+        res.redirect('/');
+      });
+
+    };
   });
 });
 

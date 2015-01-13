@@ -49,7 +49,9 @@ function(req, res) {
 app.post('/links',
 function(req, res) {
   var uri = req.body.url;
-
+  if (uri.indexOf('www') === -1){
+    uri = req.protocol + '://www.' + uri.slice(7);
+  }
   if (!util.isValidUrl(uri)) {
     console.log('Not a valid url: ', uri);
     return res.send(404);
@@ -93,33 +95,27 @@ function(req, res) {
 /************************************************************/
 
 app.get('/*', function(req, res) {
-  console.log(req.url);
-  if (req.headers.host.match(/^www/) !== null){
-    console.log("I'm in our !www handler")
-    res.redirect('http://' + req.headers.host.replace(/^www\./, '') + req.url);
-  } else {
-    console.log("I have www")
-    new Link({ code: req.params[0] }).fetch().then(function(link) {
-      if (!link) {
-        res.redirect('/');
-      } else {
-        var click = new Click({
-          link_id: link.get('id')
-        });
-
-        click.save().then(function() {
-          db.knex('urls')
-            .where('code', '=', link.get('code'))
-            .update({
-              visits: link.get('visits') + 1,
-            }).then(function() {
-              return res.redirect(link.get('url'));
-            });
-        });
-      }
-    });
-  }
-
+  /*console.log(req.url);*/
+  new Link({ code: req.params[0] }).fetch().then(function(link) {
+    if (!link) {
+      res.redirect('/');
+    } else {
+      var click = new Click({
+        link_id: link.get('id')
+      });
+    console.log('OUR test before',link.get('url'));
+      click.save().then(function() {
+        db.knex('urls')
+          .where('code', '=', link.get('code'))
+          .update({
+            visits: link.get('visits') + 1,
+          }).then(function() {
+            console.log('OUR test after',link.get('url'));
+            return res.redirect(link.get('url'));
+          });
+      });
+    }
+  });
 });
 
 console.log('Shortly is listening on 4568');

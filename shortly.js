@@ -73,23 +73,23 @@ function(req, res){
   // test case - username: Kiran, password: Password123
   new User({username: username}).fetch().then(function(found){
     if(found){ // if user exists
-      // is password correct? TODO: NEED TO HAVE HASH / SALT
-      console.log(found.attributes);
-      if (password === found.get('password')){
-        // authenticate users
+      var salt = found.get('salt');
+      var hash = bcrypt.hashSync(password, salt);
+      // is password correct?
+      if (hash === found.get('password')){
+        // TODO: Authenticate User session so get's past login page
         console.log('authenticate!')
+        res.redirect('/');
       } else { // else
         // error user
         console.log('Not a valid password: ', password);
-        // TODO: UPDATE WITH ERROR ALERT
         return res.render('login', {
           error: 'Password is wrong'
         });
       }
     } else { // error user - highlight, signup
       console.log('Not a valid user');
-      // TODO: UPDATE WITH ERROR ALERT
-      return res.render('login', {
+      return res.render('signup', {
         error: 'Username does not exist'
       });
     }
